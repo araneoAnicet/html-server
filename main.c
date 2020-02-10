@@ -21,14 +21,30 @@ struct sockaddr_in generate_socket_structure(
 int create_socket(struct sockaddr_in socket_info, int protocol_index) {
     int socket_file_descriptor = socket(socket_info.sin_family, protocol_index, 0);
     if (socket_file_descriptor != -1) {
-        printf("Binding socket...");
+        printf("Binding socket...\n");
         bind(socket_file_descriptor, (struct sockaddr*) &socket_info, sizeof(socket_info));
-        printf("New socket binded at %s:%d", socket_info.sin_addr.s_addr, socket_info.sin_port);
+        printf("New socket binded at %s:%d\n", socket_info.sin_addr.s_addr, socket_info.sin_port);
         return socket_file_descriptor;
     } else {
         printf("FAILED SOCKET CREATING\n");
         return NULL;
     }
+}
+
+void run(int socket_file_descriptor, int max_requests, char* responseHeader) {
+    int listening = listen(socket_file_descriptor, max_requests);
+    if (listening == 0) {
+        printf("Listening %d connections on socket...\n", max_requests);
+        int client_socket_file_descriptor;
+        while (1) {
+            client_socket_file_descriptor = accept(socket_file_descriptor, NULL, NULL);
+            send(client_socket_file_descriptor, responseHeader, sizeof(responseHeader), 0);
+            close(client_socket_file_descriptor);
+        }
+    } else {
+        printf("FAILED SOCKET LISTENING\n");
+    }
+
 }
 
 int main() {
