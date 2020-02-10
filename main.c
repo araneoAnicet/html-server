@@ -3,12 +3,13 @@
 #include <sys/socket.h>
 #include <netinet/ip.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #define DEFAULT_PORT 80
 
 
 struct sockaddr_in generate_socket_structure(
-    sa_family_t address_family,
-    int port,
+    short address_family,
+    unsigned short port,
     const char* network_address
     ) {
         struct sockaddr_in socket_info;
@@ -23,11 +24,11 @@ int create_socket(struct sockaddr_in socket_info, int protocol_index) {
     if (socket_file_descriptor != -1) {
         printf("Binding socket...\n");
         bind(socket_file_descriptor, (struct sockaddr*) &socket_info, sizeof(socket_info));
-        printf("New socket binded at %s:%d\n", socket_info.sin_addr.s_addr, socket_info.sin_port);
+        printf("New socket binded at %u:%d\n", socket_info.sin_addr.s_addr, socket_info.sin_port);
         return socket_file_descriptor;
     } else {
         printf("FAILED SOCKET CREATING\n");
-        return NULL;
+        // return NULL;
     }
 }
 
@@ -38,6 +39,7 @@ void run(int socket_file_descriptor, int max_requests, char* responseHeader) {
         int client_socket_file_descriptor;
         while (1) {
             client_socket_file_descriptor = accept(socket_file_descriptor, NULL, NULL);
+            printf("ACCEPTED NEW CONNECTION!\n");
             send(client_socket_file_descriptor, responseHeader, sizeof(responseHeader), 0);
             close(client_socket_file_descriptor);
         }
@@ -48,5 +50,8 @@ void run(int socket_file_descriptor, int max_requests, char* responseHeader) {
 }
 
 int main() {
+    struct sockaddr_in socket_info = generate_socket_structure(AF_INET, DEFAULT_PORT, "127.0.0.1");
+    int socket_file_descriptor = create_socket(socket_info, SOCK_STREAM);
+    run(socket_file_descriptor, 1, "HTTP/1.1 200 OK\r\n\n");
     return 0;
 }
