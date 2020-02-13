@@ -28,7 +28,6 @@ int create_socket(struct sockaddr_in socket_info, int protocol_index) {
         return socket_file_descriptor;
     } else {
         printf("FAILED SOCKET CREATING\n");
-        // return NULL;
     }
 }
 
@@ -37,9 +36,13 @@ void run(int socket_file_descriptor, int max_requests, char* responseHeader) {
     if (listening == 0) {
         printf("Listening %d connections on socket...\n", max_requests);
         int client_socket_file_descriptor;
+        short receive_buffer_size = 8192;
+        char receive_buffer[receive_buffer_size];
         while (1) {
             client_socket_file_descriptor = accept(socket_file_descriptor, NULL, NULL);
             printf("ACCEPTED NEW CONNECTION!\n");
+            int received_bytes = read(client_socket_file_descriptor, receive_buffer, receive_buffer_size);
+            printf("Received data:\n%s", receive_buffer);
             send(client_socket_file_descriptor, responseHeader, sizeof(responseHeader), 0);
             close(client_socket_file_descriptor);
         }
@@ -52,6 +55,6 @@ void run(int socket_file_descriptor, int max_requests, char* responseHeader) {
 int main() {
     struct sockaddr_in socket_info = generate_socket_structure(AF_INET, DEFAULT_PORT, "127.0.0.1");
     int socket_file_descriptor = create_socket(socket_info, SOCK_STREAM);
-    run(socket_file_descriptor, 1, "HTTP/1.1 200 OK\r\n\n");
+    run(socket_file_descriptor, 1, "HTTP/1.1 200 OK\n Content-Type: text/html; charset=utf-8\n");
     return 0;
 }
