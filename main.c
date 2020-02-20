@@ -43,34 +43,32 @@ void run(int socket_file_descriptor, int max_requests, char* responseHeader, int
         int client_socket_file_descriptor;
         short receive_buffer_size = 8192;
         char receive_buffer[receive_buffer_size];
+
+        int responseSize;
+        char* buffer;
+        long fileSize;
+        fseek(htmlDocument, 0, SEEK_END);
+        fileSize = ftell(htmlDocument);
+        fseek(htmlDocument, 0, SEEK_SET);
+        buffer = malloc(fileSize);
+        fread(buffer, 1, fileSize, htmlDocument);
+        responseSize = sizeOfResponseHeaders + sizeof(const char) * 2 + fileSize;
+        printf("RESPONSE SIEZE: %li BYTES\n", responseSize);
+        char response[responseSize];
+
+        strcpy(response, responseHeader);
+        strcat(response, "\n\n");
+        strcat(response, buffer);
+
+        free(buffer);
+        fclose(htmlDocument);
         while (1) {
             client_socket_file_descriptor = accept(socket_file_descriptor, NULL, NULL);
             printf("ACCEPTED NEW CONNECTION!\n");
             int received_bytes = read(client_socket_file_descriptor, receive_buffer, receive_buffer_size);
 
             printf("Received data:\n%s", receive_buffer);
-
-
-            int responseSize;
-            char* buffer;
-            long fileSize;
-            fseek(htmlDocument, 0, SEEK_END);
-            fileSize = ftell(htmlDocument);
-            fseek(htmlDocument, 0, SEEK_SET);
-            buffer = malloc(fileSize);
-            fread(buffer, 1, fileSize, htmlDocument);
-            responseSize = sizeOfResponseHeaders + sizeof(const char) * 2 + fileSize;
-            printf("RESPONSE SIEZE: %li BYTES\n", responseSize);
-            char response[responseSize];
-
-            strcpy(response, responseHeader);
-            strcat(response, "\n\n");
-            strcat(response, buffer);
-
             printf("SENDING RESPONSE......\n%s", response);
-
-            free(buffer);
-            fclose(htmlDocument);
             send(client_socket_file_descriptor, response, responseSize, 0);
             close(client_socket_file_descriptor);
             printf("CONNECTION CLOSED!\n");
@@ -87,6 +85,7 @@ int main() {
     struct sockaddr_in socket_info = generate_socket_structure(AF_INET, DEFAULT_PORT, "127.0.0.1");
     int socket_file_descriptor = create_socket(socket_info, SOCK_STREAM);
     
+
     run(
         socket_file_descriptor,
         1,
@@ -94,6 +93,6 @@ int main() {
         sizeOfResponseHeaders,
         getHTMLDocument("test.html")
     );
-    //close(socket_file_descriptor);
+    close(socket_file_descriptor);
     return 0;
 }
