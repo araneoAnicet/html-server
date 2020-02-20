@@ -4,8 +4,13 @@
 #include <netinet/ip.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <string.h>
 #define DEFAULT_PORT 80
 
+
+FILE* getHTMLDocument(char* fileName) {
+    return fopen(fileName, "r");
+}
 
 struct sockaddr_in generate_socket_structure(
     short address_family,
@@ -31,7 +36,7 @@ int create_socket(struct sockaddr_in socket_info, int protocol_index) {
     }
 }
 
-void run(int socket_file_descriptor, int max_requests, char* responseHeader) {
+void run(int socket_file_descriptor, int max_requests, char* responseHeader, int sizeOfResponseHeaders,  FILE* htmlDocument) {
     int listening = listen(socket_file_descriptor, max_requests);
     if (listening == 0) {
         printf("Listening %d connections on socket...\n", max_requests);
@@ -42,9 +47,34 @@ void run(int socket_file_descriptor, int max_requests, char* responseHeader) {
             client_socket_file_descriptor = accept(socket_file_descriptor, NULL, NULL);
             printf("ACCEPTED NEW CONNECTION!\n");
             int received_bytes = read(client_socket_file_descriptor, receive_buffer, receive_buffer_size);
+
             printf("Received data:\n%s", receive_buffer);
-            send(client_socket_file_descriptor, responseHeader, sizeof(responseHeader), 0);
+
+
+            int responseSize;
+            char* buffer;
+            long fileSize;
+            fseek(htmlDocument, 0, SEEK_END);
+            fileSize = ftell(htmlDocument);
+            fseek(htmlDocument, 0, SEEK_SET);
+            buffer = malloc(fileSize);
+            fread(buffer, 1, fileSize, htmlDocument);
+            responseSize = sizeOfResponseHeaders + sizeof(const char) * 2 + fileSize;
+            printf("RESPONSE SIEZE: %li BYTES\n", responseSize);
+            char response[responseSize];
+
+            strcpy(response, responseHeader);
+            strcat(response, "\n\n");
+            strcat(response, buffer);
+
+            printf("SENDING RESPONSE......\n%s", response);
+
+            free(buffer);
+            fclose(htmlDocument);
+            send(client_socket_file_descriptor, response, responseSize, 0);
             close(client_socket_file_descriptor);
+            printf("CONNECTION CLOSED!\n");
+           
         }
     } else {
         printf("FAILED SOCKET LISTENING\n");
@@ -53,8 +83,17 @@ void run(int socket_file_descriptor, int max_requests, char* responseHeader) {
 }
 
 int main() {
+    int sizeOfResponseHeaders = sizeof(const char) * 57;
     struct sockaddr_in socket_info = generate_socket_structure(AF_INET, DEFAULT_PORT, "127.0.0.1");
     int socket_file_descriptor = create_socket(socket_info, SOCK_STREAM);
-    run(socket_file_descriptor, 1, "HTTP/1.1 200 OK\n Content-Type: text/html; charset=utf-8\n");
+    
+    run(
+        socket_file_descriptor,
+        1,
+        "HTTP/1.1 200 OK\n Content-Type: text/html; charset=utf-8\n\n",
+        sizeOfResponseHeaders,
+        getHTMLDocument("test.html")
+    );
+    //close(socket_file_descriptor);
     return 0;
 }
